@@ -94,7 +94,7 @@
       padding: 0 24px;
     }
 
-    /* Search & Filter Controls */
+    /* Search & Filter Bar */
     .controls {
       display: flex;
       gap: 12px;
@@ -103,7 +103,7 @@
     }
 
     .search-input, .filter-select {
-      padding: 10px 14px;
+      padding: 12px 16px;
       border: 1px solid var(--border-color);
       background-color: var(--card-bg);
       color: var(--text-color);
@@ -114,7 +114,13 @@
 
     .search-input {
       flex: 1;
-      min-width: 200px;
+      min-width: 250px;
+    }
+
+    .search-stats {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
     }
 
     /* Product Grid */
@@ -192,6 +198,24 @@
       background-color: var(--primary-hover);
     }
 
+    /* Empty Search State */
+    .no-results {
+      text-align: center;
+      padding: 40px 20px;
+      background: var(--card-bg);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      grid-column: 1 / -1;
+    }
+
+    .no-results h3 {
+      margin-bottom: 8px;
+    }
+
+    .no-results p {
+      color: var(--text-muted);
+    }
+
     /* Modals & Overlays */
     .overlay {
       position: fixed;
@@ -206,7 +230,6 @@
 
     .overlay.active { display: block; }
 
-    /* Detail Modal */
     .modal {
       position: fixed;
       top: 50%;
@@ -327,14 +350,17 @@
 
   <main class="container">
     <div class="controls">
-      <input type="text" id="search-input" class="search-input" placeholder="Search products..." oninput="filterProducts()" />
+      <input type="text" id="search-input" class="search-input" placeholder="Search by name, description, or category..." oninput="filterProducts()" />
       <select id="filter-select" class="filter-select" onchange="filterProducts()">
         <option value="all">All Categories</option>
         <option value="Audio">Audio</option>
         <option value="Accessories">Accessories</option>
         <option value="Peripherals">Peripherals</option>
+        <option value="Displays">Displays</option>
       </select>
     </div>
+
+    <div class="search-stats" id="search-stats">Showing all products</div>
 
     <div class="product-grid" id="product-grid"></div>
   </main>
@@ -372,11 +398,20 @@
   <div id="toast">Item added to cart!</div>
 
   <script>
+    // Expanded catalog of products
     let products = [
       { id: 1, name: "Minimalist Watch", price: 49.99, category: "Accessories", desc: "A sleek, water-resistant analog timepiece with a stainless steel band.", img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400" },
       { id: 2, name: "Wireless Earbuds", price: 29.99, category: "Audio", desc: "Crystal clear audio with active noise cancellation and 24h battery life.", img: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400" },
       { id: 3, name: "Leather Backpack", price: 79.99, category: "Accessories", desc: "Premium genuine leather laptop backpack designed for daily travel.", img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400" },
-      { id: 4, name: "Mechanical Keyboard", price: 89.99, category: "Peripherals", desc: "RGB backlit mechanical keyboard with tactile blue switches.", img: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400" }
+      { id: 4, name: "Mechanical Keyboard", price: 89.99, category: "Peripherals", desc: "RGB backlit mechanical keyboard with tactile blue switches.", img: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400" },
+      { id: 5, name: "Gaming Mouse", price: 39.99, category: "Peripherals", desc: "Ergonomic wired gaming mouse with customizable DPI levels and RGB light.", img: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400" },
+      { id: 6, name: "Over-Ear Headphones", price: 119.99, category: "Audio", desc: "High-fidelity studio monitor headphones with deep bass response.", img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400" },
+      { id: 7, name: "4K Gaming Monitor", price: 299.99, category: "Displays", desc: "27-inch 144Hz 4K IPS display with ultra-thin bezel design.", img: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400" },
+      { id: 8, name: "Smart Speaker", price: 49.99, category: "Audio", desc: "Voice-controlled smart home speaker with room-filling sound quality.", img: "https://images.unsplash.com/photo-1589003077984-894e133dabab?w=400" },
+      { id: 9, name: "USB-C Multiport Dock", price: 34.99, category: "Accessories", desc: "7-in-1 aluminum USB hub with HDMI output and SD card reader.", img: "https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400" },
+      { id: 10, name: "Desk Mat Pad", price: 19.99, category: "Peripherals", desc: "Large waterproof felt desk mat pad for mouse and keyboard setup.", img: "https://images.unsplash.com/photo-1616440347437-b1c73416efc2?w=400" },
+      { id: 11, name: "Portable SSD 1TB", price: 99.99, category: "Accessories", desc: "Compact high-speed external solid state drive with shock resistance.", img: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400" },
+      { id: 12, name: "Webcam 1080p", price: 44.99, category: "Peripherals", desc: "Full HD streaming webcam with built-in microphone and privacy shutter.", img: "https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=400" }
     ];
 
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -387,21 +422,37 @@
         const response = await fetch('/api/products');
         if (response.ok) {
           const apiProducts = await response.json();
-          products = apiProducts.map((p, idx) => ({
-            ...p,
-            category: p.category || "General",
-            desc: p.desc || "High-grade tech product designed for everyday usage.",
-            img: products[idx]?.img || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400"
-          }));
+          if (apiProducts && apiProducts.length > 0) {
+            products = apiProducts.map((p, idx) => ({
+              ...p,
+              category: p.category || "General",
+              desc: p.desc || "High-grade tech product designed for everyday usage.",
+              img: p.img || products[idx]?.img || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400"
+            }));
+          }
         }
       } catch (err) {
-        console.log("Using local fallback catalog");
+        console.log("Using local extended catalog");
       }
       renderProducts(products);
     }
 
     function renderProducts(items) {
       const grid = document.getElementById('product-grid');
+      const stats = document.getElementById('search-stats');
+
+      stats.textContent = `Showing ${items.length} of ${products.length} products`;
+
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div class="no-results">
+            <h3>No products found</h3>
+            <p>Try searching for a different term or clear the search filters.</p>
+          </div>
+        `;
+        return;
+      }
+
       grid.innerHTML = items.map(p => `
         <div class="product-card">
           <img src="${p.img}" alt="${p.name}" class="product-img" onclick="openQuickView(${p.id})">
@@ -417,6 +468,23 @@
           </div>
         </div>
       `).join('');
+    }
+
+    // Advanced search across name, category, and description
+    function filterProducts() {
+      const query = document.getElementById('search-input').value.trim().toLowerCase();
+      const category = document.getElementById('filter-select').value;
+
+      const filtered = products.filter(p => {
+        const matchesQuery = p.name.toLowerCase().includes(query) ||
+                             p.category.toLowerCase().includes(query) ||
+                             p.desc.toLowerCase().includes(query);
+        const matchesCategory = (category === 'all' || p.category === category);
+
+        return matchesQuery && matchesCategory;
+      });
+
+      renderProducts(filtered);
     }
 
     function openQuickView(id) {
@@ -446,25 +514,16 @@
     function applyPromo() {
       const code = document.getElementById('promo-input').value.trim().toUpperCase();
       if (code === 'DISCOUNT10') {
-        discount = 0.10; // 10% off
+        discount = 0.10;
         showToast("10% discount applied!");
       } else if (code === 'STUDENT20') {
-        discount = 0.20; // 20% off
+        discount = 0.20;
         showToast("20% student discount applied!");
       } else {
         alert("Invalid promo code. Try DISCOUNT10 or STUDENT20");
         discount = 0;
       }
       renderCart();
-    }
-
-    function filterProducts() {
-      const query = document.getElementById('search-input').value.toLowerCase();
-      const category = document.getElementById('filter-select').value;
-      const filtered = products.filter(p => {
-        return p.name.toLowerCase().includes(query) && (category === 'all' || p.category === category);
-      });
-      renderProducts(filtered);
     }
 
     function addToCart(id) {

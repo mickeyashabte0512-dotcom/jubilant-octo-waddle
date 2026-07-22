@@ -1,10 +1,13 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 
-// Middleware to parse incoming JSON request bodies
 app.use(express.json());
 
-// In-memory product catalog matching your store setup
+// Serve static files (index.html, css, js) from the root folder
+app.use(express.static(path.join(__dirname)));
+
+// Sample product catalog API
 const products = [
   { id: 1, name: "Minimalist Watch", price: 49.99 },
   { id: 2, name: "Wireless Earbuds", price: 29.99 },
@@ -12,7 +15,7 @@ const products = [
   { id: 4, name: "Mechanical Keyboard", price: 89.99 }
 ];
 
-// GET Route: Send product catalog to the frontend
+// GET Route: Send product catalog
 app.get('/api/products', (req, res) => {
   res.status(200).json(products);
 });
@@ -20,30 +23,22 @@ app.get('/api/products', (req, res) => {
 // POST Route: Process order checkout
 app.post('/api/checkout', (req, res) => {
   const { cart } = req.body;
-
   if (!cart || cart.length === 0) {
     return res.status(400).json({ success: false, message: "Cart is empty." });
   }
-
-  // Calculate order total on the backend to prevent price tampering
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-  console.log("New order received:", { items: cart, total });
-
-  res.status(200).json({
-    success: true,
-    message: "Order received successfully!",
-    total: total.toFixed(2)
-  });
+  res.status(200).json({ success: true, message: "Order received!", total: total.toFixed(2) });
 });
 
-// For local testing (Vercel automatically wraps Express into a serverless function)
+// Explicitly serve index.html for the root route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// For local development
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server running locally at http://localhost:${PORT}`);
-  });
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
-// Required for Vercel deployment
 module.exports = app;

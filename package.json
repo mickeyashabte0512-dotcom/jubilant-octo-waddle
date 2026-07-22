@@ -1,21 +1,12 @@
 {
-  "name": "shopease",
+  "name": "simple-online-store",
   "version": "1.0.0",
-  "description": "Professional Online Shopping Website",
+  "description": "A simple Node.js and HTML shopping application deployed on Vercel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [
-    "shopping",
-    "ecommerce",
-    "express",
-    "nodejs"
-  ],
-  "author": "Mickeyas Habte",
-  "license": "MIT",
   "dependencies": {
-    "express": "^4.19.2",
-    "cors": "^2.8.5"
+    "express": "^4.19.2"
   }
 }
